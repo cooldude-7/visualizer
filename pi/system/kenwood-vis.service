@@ -14,7 +14,7 @@ StateDirectory=kenwood-vis
 WorkingDirectory=/var/lib/kenwood-vis
 Restart=always
 RestartSec=2
-Nice=-5
+Nice=5
 
 [Install]
 WantedBy=multi-user.target

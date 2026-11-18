@@ -4,7 +4,10 @@ Requires=kenwood-bluealsa.service
 After=kenwood-bluealsa.service
 
 [Service]
-ExecStart=/usr/bin/bluealsa-aplay -S --pcm=kenwood_out
+# bigger buffer rides through short Bluetooth radio hiccups;
+# --volume=software makes the phone's volume buttons work
+ExecStart=/usr/bin/bluealsa-aplay -S --pcm=kenwood_out --pcm-buffer-time=750000 --pcm-period-time=50000 --volume=software
+Nice=-10
 Restart=on-failure
 RestartSec=2
 

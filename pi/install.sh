@@ -131,6 +131,9 @@ sed "s#@BLUEALSA@#${BLUEALSA_BIN}#" "$HERE/system/kenwood-bluealsa.service" \
   | sudo tee /etc/systemd/system/kenwood-bluealsa.service >/dev/null
 sudo install -m 0644 "$HERE/system/kenwood-bluealsa-aplay.service" "$HERE/system/kenwood-bt-agent.service" \
   /etc/systemd/system/
+if [ -d /etc/NetworkManager/conf.d ]; then
+  sudo install -m 0644 "$HERE/system/wifi-powersave-off.conf" /etc/NetworkManager/conf.d/
+fi
 
 # ── 6. Spotify Connect (raspotify / librespot) ───────────────────────
 if [ "$NO_SPOTIFY" != "1" ]; then
