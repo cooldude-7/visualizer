@@ -4,9 +4,14 @@ After=sound.target bluetooth.target systemd-modules-load.service
 
 [Service]
 User=@USER@
+# hide the text-console cursor in case the console shares the SPI framebuffer
+ExecStartPre=-+/bin/sh -c 'setterm --term linux --cursor off --blank 0 > /dev/tty1 < /dev/tty1'
 ExecStart=/usr/bin/python3 /opt/kenwood-vis/kenwood_vis.py
 Environment=SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYTHONUNBUFFERED=1
+# lgpio (backlight PWM) needs a writable working directory
+Environment=LG_WD=/var/lib/kenwood-vis
 StateDirectory=kenwood-vis
+WorkingDirectory=/var/lib/kenwood-vis
 Restart=always
 RestartSec=2
 Nice=-5
