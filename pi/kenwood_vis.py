@@ -1044,19 +1044,22 @@ class App:
             self.touch = Touch(self.cfg, self.pointer)
         clock = pygame.time.Clock()
         fps = int(self.cfg["fps"])
-        n_frames, work, t_log = 0, 0.0, time.time()
+        n_frames, t_draw, t_send, t_log = 0, 0.0, 0.0, time.time()
         while self.running:
             dt = min(0.1, clock.tick(fps) / 1000.0) or 1.0 / fps
             t0 = time.perf_counter()
             self.handle_input()
             self.render(dt)
+            t1 = time.perf_counter()
             self.present()
-            work += time.perf_counter() - t0
+            t_draw += t1 - t0
+            t_send += time.perf_counter() - t1
             n_frames += 1
             if self.cfg.get("perf_log") and time.time() - t_log >= 30:
                 el = time.time() - t_log
-                print(f"[perf] {n_frames / el:.1f} fps, {1000 * work / n_frames:.1f} ms per frame of work")
-                n_frames, work, t_log = 0, 0.0, time.time()
+                print(f"[perf] {n_frames / el:.1f} fps | draw {1000 * t_draw / n_frames:.1f} ms"
+                      f" | send to screen {1000 * t_send / n_frames:.1f} ms")
+                n_frames, t_draw, t_send, t_log = 0, 0.0, 0.0, time.time()
         if self.fb:
             self.fb.clear()
             self.backlight.set(0)
