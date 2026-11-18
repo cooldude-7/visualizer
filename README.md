@@ -108,7 +108,9 @@ These pins leave the Pi's headphone jack working. The installer avoids GPIO 18 f
 ## Install
 
 1. **Flash the SD card.** In Raspberry Pi Imager choose **Raspberry Pi OS Lite (64-bit)**. Under the ⚙ settings, set a username and password, your Wi-Fi, and turn on SSH. (Use Lite, not Desktop, because the Desktop's PipeWire takes over Bluetooth audio.)
-2. Boot the Pi, then SSH in: `ssh <user>@<pi-name>.local`
+2. Boot the Pi and get a command line, either way works:
+   - **No SSH:** plug a screen into the Pi's HDMI (a TV, a monitor, or your 4.3" HDMI screen) and a USB keyboard, then log in with the username and password you set in Imager.
+   - **SSH from your computer:** `ssh <user>@<pi-name>.local`
 3. Get the code and run the installer:
    ```bash
    sudo apt-get install -y git
