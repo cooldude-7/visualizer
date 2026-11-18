@@ -42,13 +42,15 @@ CONFIG_PATH = "/etc/kenwood-vis.json"
 DEFAULTS = {
     "audio_device": "plughw:Loopback,1,0",   # capture side of the loopback
     "sample_rate": 44100,
-    "bands": 16,
-    "fmin": 40,
-    "fmax": 16000,
-    "treble_tilt_db_per_octave": 3.0,        # lifts the high bands (music is bass heavy)
-    "range_db": 42,                          # dB from top of bar to bottom of bar
+    "bands": 10,                             # number of bars (8-16 suit this screen)
+    "fmin": 45,
+    "fmax": 14000,
+    "treble_tilt_db_per_octave": 1.5,        # lifts the high bands (music is bass heavy)
+    "range_db": 36,                          # dB from top of bar to bottom of bar
+    "fall_speed": 2.2,                       # bar heights per second when the sound drops
     "silence_dbfs": -72,                     # below this the bars drop to zero
-    "fps": 30,
+    "fps": 40,
+    "perf_log": True,                        # print fps / render time to the journal every 30 s
     "framebuffer": "auto",                   # auto = the fb whose name contains ili9341
     "swap_red_blue": False,
     "rotate_180": False,
@@ -293,17 +295,21 @@ class Analyzer:
         cs = np.concatenate(([0.0], np.cumsum(spec)))
         db = 10 * np.log10(cs[self.hi] - cs[self.lo] + 1e-12) + self.tilt
         top = float(db.max())
+        # Auto-gain: catch loud parts quickly, but let go slowly (a few dB per
+        # second) so the bars follow the song's real dynamics instead of
+        # being re-normalised every frame (which looks random).
         if top > self.ref:
-            self.ref += (top - self.ref) * 0.6
+            self.ref += (top - self.ref) * 0.5
         else:
-            self.ref -= 6.0 * dt                     # release ~6 dB/s
+            self.ref -= 2.5 * dt
         if top > self.long_ref:
-            self.long_ref += (top - self.long_ref) * 0.05
+            self.long_ref += (top - self.long_ref) * 0.02
         else:
-            self.long_ref -= 0.4 * dt
-        self.ref = max(self.ref, self.long_ref - 14.0)
-        lvl = (db - (self.ref - self.range)) / self.range
-        return np.clip(lvl, 0.0, 1.0).astype(np.float32)
+            self.long_ref -= 0.3 * dt
+        self.ref = max(self.ref, self.long_ref - 9.0)
+        lvl = np.clip((db - (self.ref - self.range)) / self.range, 0.0, 1.0)
+        # gentle curve: background stays low, kicks and snares jump out
+        return (lvl ** 1.3).astype(np.float32)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -675,10 +681,13 @@ class Visualizer:
         self.state = state
         self.nb = nbands
         self.text = Text()
-        self.bw = 13
-        self.bpitch = 17
+        # bar width follows the number of bands
+        avail = W - 8 - int(NSEG * SLANT)
+        self.bpitch = avail // nbands
+        self.bw = self.bpitch - max(3, round(self.bpitch * 0.22))
         total_w = nbands * self.bpitch - (self.bpitch - self.bw) + int(NSEG * SLANT)
         self.x0 = (W - total_w) // 2
+        self.fall = float(cfg.get("fall_speed", 2.2))
         self.cols = {}
         self.cur = np.zeros(nbands, np.float32)
         self.prev_lvl = np.zeros(nbands, np.float32)
@@ -754,10 +763,8 @@ class Visualizer:
 
     # ── per-frame update ──
     def update(self, lvl, dt):
-        rise = 1 - (1 - 0.6) ** (dt * 30)
-        fall = 1 - (1 - 0.28) ** (dt * 30)
-        k = np.where(lvl > self.cur, rise, fall)
-        self.cur += (lvl - self.cur) * k
+        # hardware-style ballistics: jump up instantly, fall at a steady speed
+        self.cur = np.maximum(lvl, self.cur - self.fall * dt)
         now = time.time()
         up = self.cur > self.peak
         self.peak[up] = self.cur[up]
@@ -808,7 +815,7 @@ class Visualizer:
             t = time.time()
             dst.set_clip(pygame.Rect(0, HUD_TOP + 1, W, BASE - HUD_TOP + 2))
             for i in range(nb):
-                base = int(BASE - 12 + math.sin(t / 0.4 + i / 4.0) * 12)
+                base = int(BASE - 12 + math.sin(t / 0.4 + i * 4.0 / nb) * 12)
                 self.draw_bar(dst, i, base, self.cur[i], NSEG - 3, True, self.peak[i])
             dst.set_clip(None)
         elif mode == "RAIN DROP":
@@ -1037,11 +1044,19 @@ class App:
             self.touch = Touch(self.cfg, self.pointer)
         clock = pygame.time.Clock()
         fps = int(self.cfg["fps"])
+        n_frames, work, t_log = 0, 0.0, time.time()
         while self.running:
             dt = min(0.1, clock.tick(fps) / 1000.0) or 1.0 / fps
+            t0 = time.perf_counter()
             self.handle_input()
             self.render(dt)
             self.present()
+            work += time.perf_counter() - t0
+            n_frames += 1
+            if self.cfg.get("perf_log") and time.time() - t_log >= 30:
+                el = time.time() - t_log
+                print(f"[perf] {n_frames / el:.1f} fps, {1000 * work / n_frames:.1f} ms per frame of work")
+                n_frames, work, t_log = 0, 0.0, time.time()
         if self.fb:
             self.fb.clear()
             self.backlight.set(0)

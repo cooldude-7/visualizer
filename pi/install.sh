@@ -71,7 +71,7 @@ sudo tee -a "$CONFIG" >/dev/null <<EOF
 dtparam=spi=on
 dtparam=audio=on
 # ILI9341 display on SPI0 CE0: DC=GPIO24, RESET=GPIO25
-dtoverlay=fbtft,spi0-0,ili9341,bgr,rotate=${ROTATE},dc_pin=24,reset_pin=25,speed=${SPI_MHZ}000000,fps=50
+dtoverlay=fbtft,spi0-0,ili9341,bgr,rotate=${ROTATE},dc_pin=24,reset_pin=25,speed=${SPI_MHZ}000000,fps=60
 # XPT2046 touch on SPI0 CE1, pen interrupt GPIO17
 dtoverlay=ads7846,cs=1,penirq=17,penirq_pull=2,speed=1000000,xohms=100,pmax=255
 # <<< kenwood-vis <<<
