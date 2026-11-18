@@ -215,7 +215,7 @@ This opens a 2× preview window with fake music. Click to change mode, and hold 
 | **Sound OK but bars don't move** | While music plays: `arecord -D plughw:Loopback,1,0 -f S16_LE -r 44100 -c 2 -d 3 /tmp/t.wav && aplay /tmp/t.wav`. Make sure the snd-aloop module is loaded: `lsmod \| grep aloop` |
 | **KENWOOD-VIS not in Spotify** | You need Premium, and the phone and Pi must be on the same network. Run `systemctl status raspotify` |
 | **Phone can't find it on Bluetooth** | Hold the screen > PAIR BT first. Run `systemctl status kenwood-bluealsa kenwood-bt-agent` |
-| **Glitchy picture** | Lower the speed: re-run with `SPI_MHZ=24`, and keep the jumper wires short (under 15 cm) |
+| **Glitchy picture** | Lower the speed: re-run with `SPI_MHZ=40` (or 33), and keep the jumper wires short (under 15 cm) |
 
 Logs: `journalctl -u kenwood-vis -f`
 
