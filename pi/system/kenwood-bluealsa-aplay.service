@@ -1,0 +1,12 @@
+[Unit]
+Description=Play Bluetooth audio to speakers + visualizer
+Requires=kenwood-bluealsa.service
+After=kenwood-bluealsa.service
+
+[Service]
+ExecStart=/usr/bin/bluealsa-aplay -S --pcm=kenwood_out
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=bluetooth.target

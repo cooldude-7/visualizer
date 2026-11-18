@@ -1,0 +1,15 @@
+[Unit]
+Description=Kenwood VFD music visualizer (ILI9341 SPI screen)
+After=sound.target bluetooth.target systemd-modules-load.service
+
+[Service]
+User=@USER@
+ExecStart=/usr/bin/python3 /opt/kenwood-vis/kenwood_vis.py
+Environment=SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYTHONUNBUFFERED=1
+StateDirectory=kenwood-vis
+Restart=always
+RestartSec=2
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target

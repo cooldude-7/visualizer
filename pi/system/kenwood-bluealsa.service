@@ -1,0 +1,13 @@
+[Unit]
+Description=BlueALSA daemon (Pi acts as a Bluetooth speaker)
+Requires=bluetooth.service
+After=bluetooth.service
+
+[Service]
+Type=dbus
+BusName=org.bluealsa
+ExecStart=@BLUEALSA@ -S -p a2dp-sink
+Restart=on-failure
+
+[Install]
+WantedBy=bluetooth.target
