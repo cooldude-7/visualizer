@@ -135,7 +135,7 @@ These pins leave the Pi's headphone jack working. The installer avoids GPIO 18 f
 | `NO_SPOTIFY=1 ./install.sh` | Bluetooth only (no Premium needed) |
 | `OUTPUT_CARD=Device ./install.sh` | Sound to a USB DAC (get the name from `aplay -l`) |
 | `ROTATE=270 ./install.sh` | Screen upside down? Flip it |
-| `SPI_MHZ=48 ./install.sh` | Faster screen updates (go back to 32 if you see glitches) |
+| `SPI_MHZ=67 ./install.sh` | Faster screen updates (default 50; use 40 if you see glitches, 67 needs short wires) |
 | `DEVICE_NAME=MYCAR ./install.sh` | Change the Bluetooth/Spotify name |
 
 Run it again any time. It replaces its own settings instead of adding duplicates.

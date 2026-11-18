@@ -7,14 +7,15 @@
 #   NO_SPOTIFY=1 ./install.sh    Bluetooth only
 #   OUTPUT_CARD=Device ./install.sh   send sound to a USB DAC instead (card name from `aplay -l`)
 #   ROTATE=270 ./install.sh      flip the screen the other way up (default 90)
-#   SPI_MHZ=48 ./install.sh      faster SPI (default 32; drop back if you see garbage)
+#   SPI_MHZ=67 ./install.sh      faster SPI (default 50; 40 if you see garbage, 67 needs short wires)
+#                                (real clock = 400 MHz / even number: 67, 50, 40, 33...)
 #
 # Safe to run again after changing options.
 set -euo pipefail
 
 OUTPUT_CARD="${OUTPUT_CARD:-Headphones}"
 ROTATE="${ROTATE:-90}"
-SPI_MHZ="${SPI_MHZ:-32}"
+SPI_MHZ="${SPI_MHZ:-50}"
 DEVICE_NAME="${DEVICE_NAME:-KENWOOD-VIS}"
 NO_SPOTIFY="${NO_SPOTIFY:-0}"
 
@@ -70,8 +71,10 @@ sudo tee -a "$CONFIG" >/dev/null <<EOF
 [all]
 dtparam=spi=on
 dtparam=audio=on
+# keep the core clock (and so the SPI clock) from dropping to 250 MHz
+core_freq_min=400
 # ILI9341 display on SPI0 CE0: DC=GPIO24, RESET=GPIO25
-dtoverlay=fbtft,spi0-0,ili9341,bgr,rotate=${ROTATE},dc_pin=24,reset_pin=25,speed=${SPI_MHZ}000000,fps=100
+dtoverlay=fbtft,spi0-0,ili9341,bgr,rotate=${ROTATE},dc_pin=24,reset_pin=25,speed=$(( SPI_MHZ == 67 ? 66666666 : SPI_MHZ * 1000000 )),fps=100,txbuflen=32768
 # XPT2046 touch on SPI0 CE1, pen interrupt GPIO17
 dtoverlay=ads7846,cs=1,penirq=17,penirq_pull=2,speed=1000000,xohms=100,pmax=255
 # <<< kenwood-vis <<<
