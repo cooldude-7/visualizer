@@ -49,7 +49,8 @@ DEFAULTS = {
     "range_db": 36,                          # dB from top of bar to bottom of bar
     "fall_speed": 2.2,                       # bar heights per second when the sound drops
     "silence_dbfs": -72,                     # below this the bars drop to zero
-    "fps": 40,
+    "fps": 60,                               # upper limit; the SPI speed is the real limit
+    "fft_size": 1536,                        # smaller = less delay, larger = finer bass detail
     "perf_log": True,                        # print fps / render time to the journal every 30 s
     "framebuffer": "auto",                   # auto = the fb whose name contains ili9341
     "swap_red_blue": False,
@@ -194,13 +195,13 @@ class AudioSource:
         try:
             return alsaaudio.PCM(type=alsaaudio.PCM_CAPTURE, mode=alsaaudio.PCM_NORMAL,
                                  device=dev, rate=self.sr, channels=2,
-                                 format=alsaaudio.PCM_FORMAT_S16_LE, periodsize=512)
+                                 format=alsaaudio.PCM_FORMAT_S16_LE, periodsize=256)
         except TypeError:  # very old pyalsaaudio
             pcm = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL, device=dev)
             pcm.setchannels(2)
             pcm.setrate(self.sr)
             pcm.setformat(alsaaudio.PCM_FORMAT_S16_LE)
-            pcm.setperiodsize(512)
+            pcm.setperiodsize(256)
             return pcm
 
     def _run_alsa(self):
@@ -266,9 +267,8 @@ class AudioSource:
 class Analyzer:
     """FFT -> log-spaced bands -> 0..1 levels with automatic gain."""
 
-    N = 2048
-
     def __init__(self, cfg):
+        self.N = int(cfg.get("fft_size", 1536))
         sr = int(cfg["sample_rate"])
         nb = int(cfg["bands"])
         self.nb = nb
@@ -1009,7 +1009,7 @@ class App:
                 self.settings.show()
 
     def render(self, dt):
-        samples = self.audio.latest(Analyzer.N)
+        samples = self.audio.latest(self.analyzer.N)
         lvl = self.analyzer.process(samples, dt)
         has_signal = self.analyzer.rms_db > self.analyzer.silence
         if has_signal:
