@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kenwood DPX-6200M Dramatic Edition</title>
+    <style>
+        body {
+            background: #000;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            cursor: pointer;
+        }
+        canvas {
+            background: #000;
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="vfd" width="800" height="480"></canvas>
+<script>
+    const canvas = document.getElementById('vfd');
+    const ctx = canvas.getContext('2d');
+    let audioCtx, analyser, dataArray, timeDataArray;
+    let mode = 0;
+    const modes = ['SPEANA', 'MAGNET', 'STADIUM', 'LASER', 'SEASHORE', 'RAIN DROP', 'VIBROSCOPE'];
+    const BANDS = 32;
+    const BAR_GAP = 2;
+    const BAR_WIDTH = (800 / BANDS) - BAR_GAP;
+    const SEG_H = 14;
+    const SEG_GAP = 3;
+    const SLANT = 2.8; 
+    const PEAK_HOLD_MS = 900;
+    const LERP_UP = 0.35;
+    const LERP_DOWN = 0.18;
+    const AMP_BOOST = 3.5; 
+    let currentHeights = new Array(BANDS).fill(0);
+    let peaks = new Array(BANDS).fill(0);
+    let peakTimes = new Array(BANDS).fill(0);
+    let waveSmooth = new Array(1024).fill(128); 
+    let songTitle = "BLUETOOTH AUDIO";
+    const vfdColors = ["#0033FF", "#00F0FF", "#00FF66", "#FFFF00", "#FF9900", "#FF0033"];
+    function getVFDColor(s) {
+        if (s < 6) return vfdColors[0];
+        if (s < 12) return vfdColors[1];
+        if (s < 18) return vfdColors[2];
+        if (s < 22) return vfdColors[3];
+        if (s < 25) return vfdColors[4];
+        return vfdColors[5];
+    }
+    document.body.addEventListener('click', async () => {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioCtx.createMediaStreamSource(stream);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 2048;
+            analyser.smoothingTimeConstant = 0.8;
+            source.connect(analyser);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            timeDataArray = new Uint8Array(analyser.frequencyBinCount);
+            draw();
+        } else {
+            mode = (mode + 1) % modes.length;
+        }
+    });
+    function drawUI() {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#00F0FF";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#00F0FF";
+        ctx.font = "bold 20px monospace";
+        ctx.textAlign = "left";
+        ctx.fillText(songTitle, 20, 450);
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        ctx.textAlign = "right";
+        ctx.fillText(timeStr, 780, 450);
+        ctx.textAlign = "center";
+        ctx.font = "bold 14px monospace";
+        ctx.fillText(modes[mode], 400, 470);
+    }
+    function draw() {
+        requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+        analyser.getByteTimeDomainData(timeDataArray);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawUI();
+        if (modes[mode] === 'VIBROSCOPE') {
+            renderDramaticOscilloscope();
+            return;
+        }
+        for (let i = 0; i < BANDS; i++) {
+            const sampleIdx = Math.floor(Math.pow(i / BANDS, 1.4) * (dataArray.length * 0.7));
+            let val = dataArray[sampleIdx];
+            let targetH = (val / 255) ** 1.4 * 420 * 2.8 * (1 + (i / BANDS) * 0.5);
+            if (targetH > 420) targetH = 420;
+            let lerp = (targetH > currentHeights[i]) ? LERP_UP : LERP_DOWN;
+            currentHeights[i] += (targetH - currentHeights[i]) * lerp;
+            if (currentHeights[i] > peaks[i]) {
+                peaks[i] = currentHeights[i];
+                peakTimes[i] = Date.now();
+            } else if (Date.now() - peakTimes[i] > PEAK_HOLD_MS) {
+                peaks[i] -= 4;
+            }
+            const x = i * (BAR_WIDTH + BAR_GAP);
+            const centerY = 240;
+            switch(modes[mode]) {
+                case 'SPEANA': renderVFD(x, 400, currentHeights[i], peaks[i], true); break;
+                case 'MAGNET': renderVFD(x, 60, currentHeights[i]/2, -1, false); renderVFD(x, 400, currentHeights[i]/2, -1, true); break;
+                case 'STADIUM': renderVFD(x, centerY, currentHeights[i]/2, -1, false); renderVFD(x, centerY, currentHeights[i]/2, -1, true); break;
+                case 'LASER': 
+                    if (val > 195) { ctx.fillStyle = vfdColors[1]; ctx.shadowBlur = 25; ctx.fillRect(0, 400 - (i*12), 800, 2); }
+                    renderVFD(x, 400, currentHeights[i], peaks[i], true); 
+                    break;
+                case 'SEASHORE': renderVFD(x, 400 + Math.sin(Date.now()/400 + i/4) * 45, currentHeights[i], peaks[i], true); break;
+                case 'RAIN DROP':
+                    if (val > 210) { ctx.fillStyle = vfdColors[1]; ctx.fillRect(x, (1 - (val/255)) * 400, BAR_WIDTH, 5); }
+                    renderVFD(x, 400, currentHeights[i]*0.3, -1, true);
+                    break;
+            }
+        }
+    }
+    function renderDramaticOscilloscope() {
+        ctx.strokeStyle = "#00F0FF";
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = "#00F0FF";
+        ctx.beginPath();
+        const sliceWidth = canvas.width / timeDataArray.length;
+        let x = 0;
+        for (let i = 0; i < timeDataArray.length; i++) {
+            waveSmooth[i] += (timeDataArray[i] - waveSmooth[i]) * 0.25;
+            let deviation = (waveSmooth[i] - 128) * AMP_BOOST;
+            const y = (canvas.height / 2) + deviation;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            x += sliceWidth;
+        }
+        ctx.stroke();
+    }
+    function renderVFD(x, baselineY, height, peak, up = true) {
+        const numSegments = Math.floor(height / (SEG_H + SEG_GAP));
+        const peakSegment = Math.floor(peak / (SEG_H + SEG_GAP));
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = "#00F0FF";
+        for (let s = 0; s < numSegments; s++) {
+            const xOff = s * SLANT;
+            let y = up ? baselineY - (s * (SEG_H + SEG_GAP)) : baselineY + (s * (SEG_H + SEG_GAP));
+            ctx.fillStyle = getVFDColor(s);
+            ctx.fillRect(x + xOff, y, BAR_WIDTH, SEG_H);
+        }
+        if (peak > 0) {
+            const pxOff = peakSegment * SLANT;
+            let py = up ? baselineY - (peakSegment * (SEG_H + SEG_GAP)) : baselineY + (peakSegment * (SEG_H + SEG_GAP));
+            ctx.fillStyle = vfdColors[1];
+            ctx.fillRect(x + pxOff, py, BAR_WIDTH, 2);
+        }
+    }
+</script>
+</body>
+</html>
