@@ -63,6 +63,8 @@ It does **not** use Spotify's servers to get "beat data". Spotify shut down that
 
 ## Wiring
 
+> **Use the physical pin numbers** (the circled 1–40 on any Pi pinout diagram), **not** the "GPIO xx" labels. For example, "GPIO 18" is physical pin 12, not pin 18. Mixing these up gives a screen that lights but never shows a picture.
+
 Leave the **J1** pads on the red board **open** (not soldered), so its regulator takes 5 V. All the signal pins are 3.3 V, the same as the Pi, so no level shifter is needed.
 
 | Screen pin | Pi physical pin | Pi GPIO | Notes |
