@@ -477,14 +477,9 @@ class Backlight:
         if self.h is None:
             return
         try:
-            if pct >= 100:
-                self.lg.tx_pwm(self.h, self.gpio, 0, 0)
-                self.lg.gpio_write(self.h, self.gpio, 1)
-            elif pct <= 0:
-                self.lg.tx_pwm(self.h, self.gpio, 0, 0)
-                self.lg.gpio_write(self.h, self.gpio, 0)
-            else:
-                self.lg.tx_pwm(self.h, self.gpio, 1000, float(pct))
+            # lgpio rejects frequency 0, so always keep the PWM running and
+            # just change the duty cycle (100 = fully on, 0 = off)
+            self.lg.tx_pwm(self.h, self.gpio, 500, float(max(0, min(100, pct))))
         except Exception as e:
             print(f"[backlight] {e}", file=sys.stderr)
 
